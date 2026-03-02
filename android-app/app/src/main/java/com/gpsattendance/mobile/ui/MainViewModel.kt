@@ -28,10 +28,12 @@ class MainViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             attendanceRepository.visibleSessions()
                 .onSuccess { sessions ->
+                    val members = buildVisibleMembers(sessions)
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         sessions = sessions,
-                        memberPins = buildMemberPins(sessions)
+                        memberPins = buildMemberPins(members),
+                        visibleMembers = members
                     )
                 }
                 .onFailure {
@@ -72,23 +74,45 @@ class MainViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(myLatitude = latitude, myLongitude = longitude)
     }
 
-    private fun buildMemberPins(sessions: List<WorkSessionResponse>): List<TeamMemberPin> {
+    private fun buildVisibleMembers(sessions: List<WorkSessionResponse>): List<VisibleMember> {
         return sessions
             .asSequence()
-            .filter { it.lastLatitude != null && it.lastLongitude != null }
             .groupBy { it.userId }
             .mapNotNull { (_, userSessions) ->
-                val latest = userSessions.maxByOrNull { it.checkInAt ?: "" } ?: return@mapNotNull null
-                val lat = latest.lastLatitude ?: return@mapNotNull null
-                val lng = latest.lastLongitude ?: return@mapNotNull null
-                TeamMemberPin(
+                val latest = userSessions.maxByOrNull {
+                    listOf(it.checkInAt, it.checkOutAt, it.outsideSince).filterNotNull().maxOrNull().orEmpty()
+                } ?: return@mapNotNull null
+                val isCheckedIn = latest.status.equals("CHECKED_IN", ignoreCase = true)
+                val isInRange = isCheckedIn && latest.outsideSince == null
+                VisibleMember(
                     userId = latest.userId,
                     userName = latest.userName,
                     status = latest.status,
-                    latitude = lat,
-                    longitude = lng
+                    isCheckedIn = isCheckedIn,
+                    isInRange = isInRange,
+                    latitude = latest.lastLatitude,
+                    longitude = latest.lastLongitude
                 )
             }
+            .toList()
+    }
+
+    private fun buildMemberPins(members: List<VisibleMember>): List<TeamMemberPin> {
+        return members
+            .asSequence()
+            .filter { it.latitude != null && it.longitude != null }
+            .map {
+                TeamMemberPin(
+                    userId = it.userId,
+                    userName = it.userName,
+                    status = it.status,
+                    isCheckedIn = it.isCheckedIn,
+                    isInRange = it.isInRange,
+                    latitude = it.latitude ?: return@map null,
+                    longitude = it.longitude ?: return@map null
+                )
+            }
+            .filterNotNull()
             .toList()
     }
 }
@@ -97,14 +121,27 @@ data class TeamMemberPin(
     val userId: Long,
     val userName: String,
     val status: String,
+    val isCheckedIn: Boolean,
+    val isInRange: Boolean,
     val latitude: Double,
     val longitude: Double
+)
+
+data class VisibleMember(
+    val userId: Long,
+    val userName: String,
+    val status: String,
+    val isCheckedIn: Boolean,
+    val isInRange: Boolean,
+    val latitude: Double?,
+    val longitude: Double?
 )
 
 data class MainUiState(
     val isLoading: Boolean = false,
     val sessions: List<WorkSessionResponse> = emptyList(),
     val memberPins: List<TeamMemberPin> = emptyList(),
+    val visibleMembers: List<VisibleMember> = emptyList(),
     val myLatitude: Double? = null,
     val myLongitude: Double? = null,
     val trackingMessage: String? = null,

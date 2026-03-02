@@ -4,23 +4,33 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Color as AndroidColor
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -31,8 +41,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -51,6 +63,10 @@ import com.kakao.vectormap.LatLng
 import com.kakao.vectormap.MapLifeCycleCallback
 import com.kakao.vectormap.MapView
 import com.kakao.vectormap.camera.CameraUpdateFactory
+import com.kakao.vectormap.label.LabelOptions
+import com.kakao.vectormap.label.LabelStyle
+import com.kakao.vectormap.label.LabelTextBuilder
+import com.kakao.vectormap.label.LabelTextStyle
 
 @Composable
 fun AppScreen(
@@ -254,6 +270,7 @@ private fun MapHomeContent(
     val mapView = rememberKakaoMapViewWithLifecycle()
     var kakaoMap by remember { mutableStateOf<KakaoMap?>(null) }
     var mapError by remember { mutableStateOf<String?>(null) }
+    var selectedTab by rememberSaveable { mutableStateOf(HomeTab.MAP) }
     val hasLocationPermission = hasFineLocationPermission(context)
     var requestedLocationPermission by remember { mutableStateOf(false) }
 
@@ -315,57 +332,157 @@ private fun MapHomeContent(
         kakaoMap?.moveCamera(CameraUpdateFactory.newCenterPosition(LatLng.from(lat, lng), 15))
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        AndroidView(
-            modifier = Modifier.fillMaxSize(),
-            factory = { mapView }
-        )
+    LaunchedEffect(kakaoMap, state.memberPins, state.myLatitude, state.myLongitude) {
+        val map = kakaoMap ?: return@LaunchedEffect
+        runCatching {
+            renderMemberLabels(
+                map = map,
+                members = state.memberPins,
+                myLatitude = state.myLatitude,
+                myLongitude = state.myLongitude
+            )
+        }.onFailure {
+            mapError = it.message ?: "Failed to render map labels"
+        }
+    }
 
-        Card(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .padding(12.dp)
-        ) {
-            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Welcome, ${userName ?: "User"}", style = MaterialTheme.typography.titleMedium)
-                Text("Team markers: ${state.memberPins.size}")
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = {
-                        if (hasFineLocationPermission(context)) {
-                            fetchCurrentLocation(context) { lat, lng ->
-                                onMyLocationDetected(lat, lng)
-                                onUpdateLocation(lat, lng)
-                            }
-                        } else {
-                            permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-                        }
-                    }) {
-                        Text("Update my location")
-                    }
-
-                    Button(onClick = onRefresh) {
-                        Text("Refresh team")
-                    }
-
-                    Button(onClick = onLogout) {
-                        Text("Logout")
-                    }
-                }
-
-                if (state.isLoading) {
-                    CircularProgressIndicator()
-                }
-
-                state.trackingMessage?.let { Text(it) }
-                state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                mapError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                if (state.memberPins.isEmpty()) {
-                    Text(
-                        "No team location data yet. Team markers appear after members send location.",
-                        style = MaterialTheme.typography.bodySmall
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.safeDrawing)
+    ) {
+        Box(modifier = Modifier.weight(1f)) {
+            if (selectedTab == HomeTab.MAP) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AndroidView(
+                        modifier = Modifier.fillMaxSize(),
+                        factory = { mapView }
                     )
+
+                    Card(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .fillMaxWidth()
+                            .padding(12.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Welcome, ${userName ?: "User"}", style = MaterialTheme.typography.titleMedium)
+                            Text("Visible members: ${state.visibleMembers.size}")
+
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(onClick = {
+                                    if (hasFineLocationPermission(context)) {
+                                        fetchCurrentLocation(context) { lat, lng ->
+                                            onMyLocationDetected(lat, lng)
+                                            onUpdateLocation(lat, lng)
+                                        }
+                                    } else {
+                                        permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                                    }
+                                }) {
+                                    Text("Update my location")
+                                }
+
+                                Button(onClick = onRefresh) {
+                                    Text("Refresh")
+                                }
+
+                                Button(onClick = onLogout) {
+                                    Text("Logout")
+                                }
+                            }
+
+                            if (state.isLoading) {
+                                CircularProgressIndicator()
+                            }
+
+                            state.trackingMessage?.let { Text(it) }
+                            state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                            mapError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                        }
+                    }
+                }
+            } else {
+                MemberListContent(
+                    members = state.visibleMembers,
+                    isLoading = state.isLoading
+                )
+            }
+        }
+
+        NavigationBar {
+            NavigationBarItem(
+                selected = selectedTab == HomeTab.MAP,
+                onClick = { selectedTab = HomeTab.MAP },
+                icon = { Text("지도") },
+                label = { Text("Map") }
+            )
+            NavigationBarItem(
+                selected = selectedTab == HomeTab.MEMBERS,
+                onClick = { selectedTab = HomeTab.MEMBERS },
+                icon = { Text("목록") },
+                label = { Text("Members") }
+            )
+        }
+    }
+}
+
+private enum class HomeTab {
+    MAP,
+    MEMBERS
+}
+
+@Composable
+private fun MemberListContent(
+    members: List<VisibleMember>,
+    isLoading: Boolean
+) {
+    if (isLoading && members.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    if (members.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("표시 가능한 팀원 데이터가 없습니다.")
+        }
+        return
+    }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(members, key = { it.userId }) { member ->
+            val inRange = member.isInRange
+            val cardColor = if (inRange) Color(0xFFE8F5E9) else Color(0xFFE0E0E0)
+            val statusText = when {
+                member.isCheckedIn && inRange -> "근무중 (반경 내)"
+                member.isCheckedIn -> "근무중 (반경 밖)"
+                else -> "퇴근"
+            }
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                colors = CardDefaults.cardColors(containerColor = cardColor)
+            ) {
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(member.userName, style = MaterialTheme.typography.titleMedium)
+                    Text(statusText)
+                    Text("Session status: ${member.status}", style = MaterialTheme.typography.bodySmall)
+                    if (member.latitude != null && member.longitude != null) {
+                        Text(
+                            "위치: %.5f, %.5f".format(member.latitude, member.longitude),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    } else {
+                        Text("위치 정보 없음", style = MaterialTheme.typography.bodySmall)
+                    }
                 }
             }
         }
@@ -391,7 +508,7 @@ private fun UnsupportedMapContent(
             color = MaterialTheme.colorScheme.error
         )
         Text("ARM64 에뮬레이터 또는 실제 안드로이드 기기에서 실행해 주세요.")
-        Text("Team markers: ${state.memberPins.size}")
+        Text("Visible members: ${state.visibleMembers.size}")
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = onRefresh) { Text("Refresh team") }
@@ -404,6 +521,41 @@ private fun UnsupportedMapContent(
 
         state.trackingMessage?.let { Text(it) }
         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        MemberListContent(members = state.visibleMembers, isLoading = state.isLoading)
+    }
+}
+
+private fun renderMemberLabels(
+    map: KakaoMap,
+    members: List<TeamMemberPin>,
+    myLatitude: Double?,
+    myLongitude: Double?
+) {
+    val layer = map.labelManager?.layer ?: return
+    layer.removeAll()
+
+    members.forEach { member ->
+        val labelColor = if (member.isInRange) AndroidColor.parseColor("#2E7D32") else AndroidColor.parseColor("#616161")
+        val text = if (member.isInRange) "${member.userName} ●" else "${member.userName} ○"
+        val options = LabelOptions.from(LatLng.from(member.latitude, member.longitude))
+            .setStyles(
+                LabelStyle.from(
+                    LabelTextStyle.from(28, labelColor, 4, AndroidColor.WHITE)
+                )
+            )
+            .setTexts(LabelTextBuilder().setTexts(text))
+        layer.addLabel(options)
+    }
+
+    if (myLatitude != null && myLongitude != null) {
+        val myOptions = LabelOptions.from(LatLng.from(myLatitude, myLongitude))
+            .setStyles(
+                LabelStyle.from(
+                    LabelTextStyle.from(30, AndroidColor.parseColor("#1565C0"), 4, AndroidColor.WHITE)
+                )
+            )
+            .setTexts(LabelTextBuilder().setTexts("나"))
+        layer.addLabel(myOptions)
     }
 }
 
