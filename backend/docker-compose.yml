@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gps-attendance-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: gps_attendance
+      POSTGRES_USER: gps_user
+      POSTGRES_PASSWORD: gps_pass
+      DB_SCHEMA: attendance
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gps_user -d gps_attendance"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: gps-attendance-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres-data:
+  redis-data:

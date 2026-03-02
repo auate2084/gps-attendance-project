@@ -1,0 +1,17 @@
+package com.attendance.organization.presentation.dto;
+
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
+public record UpdateWorkPolicyRequest(
+        @NotNull Long teamId,
+        @NotBlank String name,
+        @NotNull Double latitude,
+        @NotNull Double longitude,
+        @Min(1) @Max(10000) Integer checkinRadiusM,
+        @Min(1) @Max(10000) Integer checkoutRadiusM,
+        @Min(1) @Max(1440) Integer checkoutGraceMinutes
+) {
+}

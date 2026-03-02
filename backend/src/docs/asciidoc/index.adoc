@@ -1,0 +1,67 @@
+= GPS Attendance API Docs
+:toc: left
+:toclevels: 2
+:sectlinks:
+
+== Overview
+All endpoints are prefixed with `/api/v1`.
+
+=== Authentication
+Use `Authorization: Bearer <accessToken>` for protected endpoints.
+
+=== Error Format
+----
+{
+  "message": "error message"
+}
+----
+
+== User API
+
+=== Register
+include::{snippets}/users-register/http-request.adoc[]
+include::{snippets}/users-register/http-response.adoc[]
+
+=== Login
+include::{snippets}/users-login/http-request.adoc[]
+include::{snippets}/users-login/http-response.adoc[]
+
+=== Refresh Token
+include::{snippets}/users-refresh/http-request.adoc[]
+include::{snippets}/users-refresh/http-response.adoc[]
+
+=== Update My Organization
+include::{snippets}/users-update-my-organization/http-request.adoc[]
+include::{snippets}/users-update-my-organization/http-response.adoc[]
+
+== Organization API
+
+=== Create Team
+include::{snippets}/organization-create-team/http-request.adoc[]
+include::{snippets}/organization-create-team/http-response.adoc[]
+
+=== Update Team
+include::{snippets}/organization-update-team/http-request.adoc[]
+include::{snippets}/organization-update-team/http-response.adoc[]
+
+=== Create Work Policy
+include::{snippets}/organization-create-work-policy/http-request.adoc[]
+include::{snippets}/organization-create-work-policy/http-response.adoc[]
+
+=== Update Work Policy
+include::{snippets}/organization-update-work-policy/http-request.adoc[]
+include::{snippets}/organization-update-work-policy/http-response.adoc[]
+
+== Attendance API
+
+=== Update My Location
+include::{snippets}/attendance-update-my-location/http-request.adoc[]
+include::{snippets}/attendance-update-my-location/http-response.adoc[]
+
+=== My Sessions
+include::{snippets}/attendance-my-sessions/http-request.adoc[]
+include::{snippets}/attendance-my-sessions/http-response.adoc[]
+
+=== Visible Sessions
+include::{snippets}/attendance-visible-sessions/http-request.adoc[]
+include::{snippets}/attendance-visible-sessions/http-response.adoc[]

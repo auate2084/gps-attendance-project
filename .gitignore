@@ -1,0 +1,46 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Node
+**/node_modules/
+**/.next/
+**/dist/
+
+# Java/Kotlin/Gradle/Android
+**/.gradle/
+**/build/
+**/.cxx/
+**/captures/
+**/local.properties
+
+# Python
+**/.venv/
+**/__pycache__/
+
+# Temp
+*.tmp
+*.temp
+
+# Local tool caches
+**/.gradle-user-home/
+**/.android-home/
+**/.android/
+
+# Backend generated files
+backend/target/
+backend/gradle-8.10.2/
+backend/gradle-8.10.2-bin.zip
