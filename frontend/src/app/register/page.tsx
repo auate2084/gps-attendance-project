@@ -30,9 +30,14 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const response = await authApi.register({ email, password, name });
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('userName', response.name);
+      await authApi.register({ email, password, name });
+      const loginResponse = await authApi.login({ loginId: email, password });
+      localStorage.setItem('token', loginResponse.accessToken);
+      localStorage.setItem('refreshToken', loginResponse.refreshToken);
+      localStorage.setItem('userName', loginResponse.user.name);
+      if (loginResponse.user.teamId) {
+        localStorage.setItem('teamId', String(loginResponse.user.teamId));
+      }
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.message || '회원가입에 실패했습니다');

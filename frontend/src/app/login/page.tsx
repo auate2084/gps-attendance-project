@@ -17,9 +17,13 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await authApi.login({ email, password });
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('userName', response.name);
+      const response = await authApi.login({ loginId: email, password });
+      localStorage.setItem('token', response.accessToken);
+      localStorage.setItem('refreshToken', response.refreshToken);
+      localStorage.setItem('userName', response.user.name);
+      if (response.user.teamId) {
+        localStorage.setItem('teamId', String(response.user.teamId));
+      }
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.message || '로그인에 실패했습니다');

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:8080/api',
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -10,7 +10,7 @@ const api = axios.create({
 // 요청 인터셉터: JWT 토큰 자동 추가
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -25,8 +25,9 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
       window.location.href = '/login';
     }
     return Promise.reject(error);

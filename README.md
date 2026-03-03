@@ -1,132 +1,156 @@
-# GPS 출퇴근 관리 시스템
+﻿# GPS Attendance
 
-GPS 기반 자동 출퇴근 관리 웹 애플리케이션
+GPS 기반 출퇴근 관리 프로젝트입니다. 이 저장소는 아래 4개 앱으로 구성되어 있습니다.
 
-## 기술 스택
+- `backend`: Spring Boot API 서버 (Gradle)
+- `frontend`: Next.js 웹 앱
+- `android-app`: Kotlin + Jetpack Compose 안드로이드 앱
+- `ios-app`: Swift + SwiftUI iOS 앱 스캐폴드
+
+## 1) 사전 준비
+
+### 공통
+- Git
 
 ### Backend
-- Java 17
-- Spring Boot 3.2.1
-- Spring Security + JWT
-- Spring Data JPA
-- H2 Database (개발용)
-- PostgreSQL (운영용)
+- JDK 17
+- Docker Desktop (PostgreSQL, Redis 실행용)
 
 ### Frontend
-- Next.js 15
-- TypeScript
-- Tailwind CSS
-- Axios
+- Node.js 20+
 
-## 주요 기능
+### Android
+- Android Studio
+- Android SDK (minSdk 26 이상)
 
-1. **사용자 인증**
-   - JWT 기반 회원가입/로그인
-   - 토큰 자동 갱신
+### iOS
+- macOS + Xcode (Windows에서는 빌드/실행 불가)
 
-2. **회사 위치 설정**
-   - GPS 좌표로 회사 위치 지정
-   - 출퇴근 인정 반경 설정 (50m ~ 1000m)
+## 2) 빠른 실행 순서
 
-3. **출퇴근 관리**
-   - GPS 기반 자동 거리 계산
-   - 반경 내 진입 시 출근/퇴근 가능
-   - 실시간 위치 추적
+1. DB/Redis 실행
+2. Backend 실행 (Gradle)
+3. Frontend 실행 (선택)
+4. Android 또는 iOS 앱 실행
 
-4. **출퇴근 기록**
-   - 출퇴근 이력 조회
-   - 근무 시간 자동 계산
+---
 
-## 설치 및 실행
+## 3) Backend 실행 (Gradle)
 
-### 백엔드
+`backend`는 Maven이 아니라 **Gradle Wrapper**를 사용합니다.
 
-\`\`\`bash
+### 3-1. 인프라(PostgreSQL, Redis) 실행
+
+```bash
 cd backend
+docker compose up -d
+```
 
-# Maven 빌드
-./mvnw clean install
+기본 포트:
+- PostgreSQL: `5432`
+- Redis: `6379`
 
-# 실행
-./mvnw spring-boot:run
-\`\`\`
+### 3-2. 서버 실행
 
-서버가 http://localhost:8080 에서 실행됩니다.
+Windows:
+```bash
+cd backend
+.\gradlew.bat bootRun
+```
 
-### 프론트엔드
+macOS/Linux:
+```bash
+cd backend
+./gradlew bootRun
+```
 
-\`\`\`bash
+서버 주소:
+- `http://localhost:8080`
+
+### 3-3. 테스트 실행
+
+Windows:
+```bash
+cd backend
+.\gradlew.bat test
+```
+
+macOS/Linux:
+```bash
+cd backend
+./gradlew test
+```
+
+### 3-4. 주요 환경변수 (선택)
+
+`backend/src/main/resources/application.yml` 기준 기본값:
+- `DB_HOST=localhost`
+- `DB_PORT=5432`
+- `DB_NAME=gps_attendance`
+- `DB_SCHEMA=attendance`
+- `DB_USERNAME=gps_user`
+- `DB_PASSWORD=gps_pass`
+- `REDIS_HOST=localhost`
+- `REDIS_PORT=6379`
+
+---
+
+## 4) Frontend 실행
+
+```bash
 cd frontend
-
-# 패키지 설치
 npm install
-
-# 개발 서버 실행
 npm run dev
-\`\`\`
+```
 
-애플리케이션이 http://localhost:3000 에서 실행됩니다.
+웹 주소:
+- `http://localhost:3000`
 
-## API 엔드포인트
+---
 
-### 인증
-- `POST /api/auth/register` - 회원가입
-- `POST /api/auth/login` - 로그인
+## 5) Android 실행
 
-### 회사 위치
-- `POST /api/workplace` - 회사 위치 저장
-- `GET /api/workplace` - 회사 위치 조회
+1. Android Studio에서 `android-app` 열기
+2. Gradle Sync
+3. 백엔드 실행 상태 확인
+4. 에뮬레이터 또는 실기기에서 앱 실행
 
-### 출퇴근
-- `POST /api/attendance/checkin` - 출근
-- `POST /api/attendance/checkout` - 퇴근
-- `GET /api/attendance/history` - 전체 기록 조회
-- `GET /api/attendance/today` - 오늘 기록 조회
-- `GET /api/attendance/status` - 현재 상태 조회
+기본 API 주소:
+- `android-app/app/build.gradle.kts`의 `BASE_URL`
+- 기본값: `http://10.0.2.2:8080/` (에뮬레이터 기준)
 
-## 사용 방법
+카카오 지도 키:
+- `KAKAO_NATIVE_APP_KEY`를 `gradle.properties`에 설정 필요
 
-1. **회원가입/로그인**
-   - 이메일과 비밀번호로 계정 생성
-   - 로그인하여 JWT 토큰 발급
+---
 
-2. **회사 위치 설정**
-   - 설정 메뉴에서 회사 위치 등록
-   - "현재 위치 가져오기" 버튼으로 간편 설정
-   - 출퇴근 인정 반경 설정
+## 6) iOS 실행
 
-3. **출퇴근하기**
-   - 대시보드에서 현재 위치와 회사와의 거리 확인
-   - 반경 내에서 출근/퇴근 버튼 클릭
+`ios-app`은 SwiftUI 기반 스캐폴드이며, macOS에서만 실행 가능합니다.
 
-4. **기록 확인**
-   - 기록 메뉴에서 출퇴근 이력 조회
-   - 근무 시간 자동 계산
+```bash
+cd ios-app
+brew install xcodegen
+xcodegen generate
+```
 
-## GPS 거리 계산
+생성된 `GPSAttendanceiOS.xcodeproj`를 Xcode로 열어 실행하세요.
 
-Haversine Formula를 사용하여 두 GPS 좌표 간의 거리를 미터 단위로 계산합니다.
+참고:
+- 지도 UI는 시뮬레이터에서도 확인 가능
+- 실제 GPS 정확도/백그라운드 위치 검증은 실기기(iPhone) 권장
 
-## 보안
+---
 
-- 비밀번호: BCrypt 암호화
-- 인증: JWT 토큰 (24시간 유효)
-- CORS: localhost:3000만 허용
+## 7) 현재 API 경로
 
-## 주의사항
-
-### 웹 브라우저 제한사항
-- 백그라운드에서 GPS 추적 제한적
-- HTTPS 환경에서만 GPS 정확도 향상
-- 배터리 소모 고려 필요
-
-### 개선 방향
-실제 프로덕션 환경에서는:
-1. React Native로 네이티브 앱 개발 권장
-2. 백그라운드 위치 추적 구현
-3. Push 알림 기능 추가
-4. PostgreSQL 등 운영 DB 사용
-
-## 라이선스
-
-MIT
+백엔드 컨트롤러 기준:
+- `POST /api/v1/users/register`
+- `POST /api/v1/users/login`
+- `POST /api/v1/users/refresh`
+- `POST /api/v1/attendance/me/location`
+- `GET /api/v1/attendance/me/sessions`
+- `GET /api/v1/attendance/visible-sessions`
+- `GET /api/v1/teams`
+- `POST /api/v1/teams`
+- `POST /api/v1/teams/work-policies`
